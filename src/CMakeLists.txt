@@ -8,6 +8,7 @@ add_library(
   iota.cc
   sum.cc
   square.cc
+  countif.cc
   ${TEMPLATE_SOURCES}
 )
 

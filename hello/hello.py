@@ -15,6 +15,8 @@ class HelloOpCode(IntEnum):
     SUM = user_lib.cffi.SUM
     SQUARE = user_lib.cffi.SQUARE
     IOTA = user_lib.cffi.IOTA
+    COUNT_IF_ZERO = user_lib.cffi.COUNT_IF_ZERO
+    COUNT_IF = user_lib.cffi.COUNT_IF
 
 
 def print_hello(message: str) -> None:
@@ -63,7 +65,7 @@ def _get_legate_store(input: Any) -> Store:
     return store
 
 
-def to_scalar(input: Store) -> float:
+def to_scalar(input: Store, out_type=float, dtype=np.float32) -> float:
     """Extracts a Python scalar value from a Legate store
        encapsulating a single scalar
 
@@ -73,9 +75,9 @@ def to_scalar(input: Store) -> float:
     Returns:
         float: A Python scalar
     """
-    buf = input.storage.get_buffer(np.float32().itemsize)
-    result = np.frombuffer(buf, dtype=np.float32, count=1)
-    return float(result[0])
+    buf = input.storage.get_buffer(dtype().itemsize)
+    result = np.frombuffer(buf, dtype=dtype, count=1)
+    return out_type(result[0])
 
 
 def zero() -> Store:
@@ -140,6 +142,33 @@ def sum(input: Any) -> Store:
     task.execute()
     return output
 
+def count_if_zero(input : Any) -> Store:
+    """Counts the number of zeros in 1-d array"""
+    input = _get_legate_store(input)
+
+    task = user_context.create_auto_task(HelloOpCode.COUNT_IF_ZERO)
+    
+    output = zero()
+
+    task.add_input(input)
+    task.add_reduction(output, types.ReductionOp.ADD)
+    task.execute()
+    return output
+
+def count_if(input : Any, search_value : float) -> Store:
+    """Returns the number of times search_value appears in array"""
+    input = _get_legate_store(input)
+
+    task = user_context.create_auto_task(HelloOpCode.COUNT_IF)
+    
+    output = zero()
+
+    task.add_input(input)
+    task.add_scalar_arg(search_value, types.float32)
+
+    task.add_reduction(output, types.ReductionOp.ADD)
+    task.execute()
+    return output
 
 def square(input: Any) -> Store:
     """Computes the elementwise square of a 1-D array
